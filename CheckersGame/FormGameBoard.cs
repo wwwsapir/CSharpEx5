@@ -1,15 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Forms.VisualStyles;
 
 namespace CheckersGame
 {
-    class FormGameBoard : Form
+    public delegate FormGameBoard.MoveInfo NotifyFatherAboutMove(Button i_SrcButton, Button i_DstButton);
+
+    public class FormGameBoard : Form
     {
+        const string k_EmptyString = "";
         private Button m_SourcePosition = null;
+        public event NotifyFatherAboutMove HandleInputMove;
 
         private Button ButtonBa;
         private Button button3;
@@ -52,9 +58,103 @@ namespace CheckersGame
         private Label LabelPlayer2Score;
         private Button button1;
 
+        public class MoveInfo
+        {
+            private bool m_MoveValid;
+            private string m_CapturedCell;
+
+            public bool MoveValid 
+            {
+                get { return m_MoveValid; }
+                set { m_MoveValid = value; }
+            }
+
+            public string CapturedCell
+            {
+                get { return CapturedCell; }
+                set { m_CapturedCell = value; }
+            }
+        }
+
         public FormGameBoard(byte i_BoardSize)
         {
             InitializeComponent();
+            Button currButton;
+            foreach (Control control in Controls)
+            {
+                currButton = control as Button;
+                if (currButton != null && currButton.Enabled)
+                {
+                    currButton.Click += button_Clicked; // Listen to each white cell button
+                }
+            }
+        }
+
+        private void button_Clicked(object sender, EventArgs e)
+        {
+            if (m_SourcePosition == null)   // No source position determined yet
+            {
+                if ((sender as Button).Text != k_EmptyString)   // Set this button as source position
+                {
+                    m_SourcePosition = sender as Button;
+                    m_SourcePosition.BackColor = Color.Aquamarine;
+                    m_SourcePosition.Click -= button_Clicked;
+                    m_SourcePosition.Click += button_ClickedAgain;
+                }
+            }
+            else
+            {
+                // Source position already exists - check if this position is a valid destination
+                MoveInfo moveInfo = OnInputMoveReceived(m_SourcePosition, sender as Button);
+                if (!(moveInfo.MoveValid))
+                {
+                    MessageBox.Show("Invalid Move!");
+                }
+                else
+                {
+                    Button capturedButton = PositionStringToButton(moveInfo.CapturedCell);
+                    if (capturedButton != null)
+                    {
+                        capturedButton.Text = k_EmptyString;
+                    }
+                    (sender as Button).Text = m_SourcePosition.Text;
+                    m_SourcePosition.Text = k_EmptyString;
+                    m_SourcePosition = null;
+                }
+            }
+        }
+
+        private Button PositionStringToButton(string i_PositionStr)
+        {
+            Button buttonToReturn = null;
+            foreach (Control control in Controls)
+            {
+                if (control.Tag.ToString() == i_PositionStr)
+                {
+                    buttonToReturn = control as Button;
+                }
+            }
+
+            return buttonToReturn;
+        }
+
+        private MoveInfo OnInputMoveReceived(Button i_srcButton, Button i_dstButton)
+        {
+            MoveInfo moveInfo = new MoveInfo();
+            if (HandleInputMove != null)
+            {
+                moveInfo = HandleInputMove.Invoke(i_srcButton, i_dstButton);
+            }
+
+            return moveInfo;
+        }
+
+        private void button_ClickedAgain(object sender, EventArgs e)
+        {
+            m_SourcePosition.BackColor = Color.White;
+            m_SourcePosition.Click -= button_ClickedAgain;
+            m_SourcePosition.Click += button_Clicked;
+            m_SourcePosition = null;
         }
 
         private void InitializeComponent()

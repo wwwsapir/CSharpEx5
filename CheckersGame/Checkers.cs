@@ -10,6 +10,8 @@ namespace CheckersGame
         private const string k_First = "first";
         private const string k_Second = "second";
 
+        private const char k_Delimiter = '>';
+
         private static readonly byte sr_MaxStrLength = 20;
         private CheckersGameBoard m_CheckersBoard;
         private List<Piece> m_Player1PiecesList;
@@ -542,6 +544,11 @@ namespace CheckersGame
         private List<Piece> getPlayerPiecesList(PlayerInfo i_Player)
         {
             return i_Player == m_Player1 ? m_Player1PiecesList : m_Player2PiecesList;
+        }
+
+        public static bool CheckIfMoveValid(Position i_SrcPosition, Position i_DstPosition, out Position? i_CapturedCell)
+        {
+            throw new NotImplementedException();
         }
     }
 }
