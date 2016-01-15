@@ -14,8 +14,10 @@ namespace CheckersGame
     public class FormGameBoard : Form
     {
         const string k_EmptyString = "";
-        private Button m_SourcePosition = null;
+        private Button m_SourcePosition;
         public event NotifyFatherAboutMove HandleInputMove;
+        private readonly FormGameSettings r_FormGameSettings = new FormGameSettings();
+        private Checkers r_CheckersLogic = new Checkers();
 
         private Button ButtonBa;
         private Button button3;
@@ -58,6 +60,44 @@ namespace CheckersGame
         private Label LabelPlayer2Score;
         private Button button1;
 
+        public void StartGame()
+        {
+            r_FormGameSettings.ShowDialog();
+            r_CheckersLogic.InitializeGameLogic(r_FormGameSettings.BoardSize,
+                r_FormGameSettings.Player1Name,
+                r_FormGameSettings.Player2Name,
+                r_FormGameSettings.IsPlayer2Human);
+
+            if (r_FormGameSettings.BoardSize == 6)
+            {
+                InitializeComponent();  // TODO Change to 6 func
+            }
+            else if (r_FormGameSettings.BoardSize == 8)
+            {
+                InitializeComponent();  // TODO Change to 8 func
+            }
+            else
+            {
+                // r_FormGameSettings.BoardSize == 10
+                InitializeComponent();  // TODO Change to 10 func
+            }
+
+            HandleInputMove += BoardForm_InputReceived;
+            ShowDialog();
+        }
+
+        private MoveInfo BoardForm_InputReceived(Button i_SrcButton, Button i_DstButton)
+        {
+            MoveInfo moveInfo = new MoveInfo();
+            Position srcPosition = Position.ParseAlphabetPosition(i_SrcButton.Tag.ToString());
+            Position dstPosition = Position.ParseAlphabetPosition(i_DstButton.Tag.ToString());
+            Position? capturedPosition = null;
+            moveInfo.MoveValid = Checkers.CheckIfMoveValid(srcPosition, dstPosition, out capturedPosition);
+            moveInfo.CapturedCell = capturedPosition.Value.ToAlphabetString();
+
+            return moveInfo;
+        }
+
         public class MoveInfo
         {
             private bool m_MoveValid;
@@ -76,9 +116,8 @@ namespace CheckersGame
             }
         }
 
-        public FormGameBoard(byte i_BoardSize)
+        public FormGameBoard()
         {
-            InitializeComponent();
             Button currButton;
             foreach (Control control in Controls)
             {
@@ -106,6 +145,8 @@ namespace CheckersGame
             {
                 // Source position already exists - check if this position is a valid destination
                 MoveInfo moveInfo = OnInputMoveReceived(m_SourcePosition, sender as Button);
+                Move m = Move.Parse(m_SourcePosition.Tag, (sender as Button).Tag);
+                r_CheckersLogic.playRound(move); // can succeed or may not
                 if (!(moveInfo.MoveValid))
                 {
                     MessageBox.Show("Invalid Move!");
@@ -633,7 +674,7 @@ namespace CheckersGame
             this.LabelPlayer2Score.TabIndex = 39;
             this.LabelPlayer2Score.Text = "0";
             // 
-            // FormGameBoard
+            // 
             // 
             this.BackColor = System.Drawing.Color.DeepSkyBlue;
             this.ClientSize = new System.Drawing.Size(226, 268);
@@ -678,14 +719,14 @@ namespace CheckersGame
             this.Controls.Add(this.ButtonBa);
             this.Controls.Add(this.button1);
             this.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(177)));
-            this.Name = "FormGameBoard";
-            this.Load += new System.EventHandler(this.FormGameBoard_Load);
+            this.Name = "";
+            this.Load += new System.EventHandler(this._Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 
         }
 
-        private void FormGameBoard_Load(object sender, EventArgs e)
+        private void _Load(object sender, EventArgs e)
         {
 
         }

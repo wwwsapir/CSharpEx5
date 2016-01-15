@@ -51,7 +51,6 @@
   <ItemGroup>
     <Compile Include="Checkers.cs" />
     <Compile Include="CheckersGameBoard.cs" />
-    <Compile Include="CheckersGameGui.cs" />
     <Compile Include="FormGameBoard.cs">
       <SubType>Form</SubType>
     </Compile>

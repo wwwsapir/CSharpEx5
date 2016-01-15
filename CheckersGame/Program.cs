@@ -4,9 +4,8 @@
     {
         public static void Main()
         {
-
-            CheckersGameGui currCheckersGameGui = new CheckersGameGui();
-            currCheckersGameGui.StartGame();
+            FormGameBoard currFormGameBoard = new FormGameBoard();
+            currFormGameBoard.StartGame();
         }
     }
 }
