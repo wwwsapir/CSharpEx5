@@ -13,6 +13,7 @@ namespace CheckersGame
         bool i_Tie,
         uint i_Player1NewScore,
         uint i_Player2NewScore);
+    public delegate void NotifyManToKingOccured(Checkers.Piece i_ChangedPiece);
 
     public class Checkers
     {
@@ -33,10 +34,11 @@ namespace CheckersGame
         private LinkedList<Move> r_CurrentlyLegalMoves = new LinkedList<Move>();
 
         //Delegated:
-        public event NotifyPieceCaptured m_NotifyPieceCaptured;
-        public event NotifyPieceMoved m_NotifyPieceMoved;
-        public event NotifyInvalidMoveGiven m_NotifyInvalidMoveGiven;
-        public event NotifyGameOver m_NotifyGameOver;
+        public event NotifyPieceCaptured NotifyPieceCaptured;
+        public event NotifyPieceMoved NotifyPieceMoved;
+        public event NotifyInvalidMoveGiven NotifyInvalidMoveGiven;
+        public event NotifyGameOver NotifyGameOver;
+        public event NotifyManToKingOccured NotifyManToKingOccured;
 
         public void InitializeBoard(byte i_BoardSize)
         {
@@ -62,7 +64,6 @@ namespace CheckersGame
             m_Player1 = new PlayerInfo(i_Player1Name, v_Human, ePlayerTag.First);
             m_Player2 = new PlayerInfo(i_Player2Name, i_IsPlayer2Human, ePlayerTag.Second);
             m_CurrPlayerTurn = m_Player1;
-
             buildPlayersPiecesList();
         }
 
@@ -108,10 +109,27 @@ namespace CheckersGame
 
             m_Player1PiecesList = m_CheckersBoard.BuildPlayerPiecesList(ePlayerTag.First);
             m_Player2PiecesList = m_CheckersBoard.BuildPlayerPiecesList(ePlayerTag.Second);
+            signToPiecesTurnToKingNotifier(m_Player1PiecesList);
+            signToPiecesTurnToKingNotifier(m_Player2PiecesList);
+        }
+
+        void signToPiecesTurnToKingNotifier(List<Piece> i_CurrPiecesList)
+        {
+            foreach (Piece piece in i_CurrPiecesList)
+            {
+                piece.NotifyManToKingOccured += Piece_ManToKingOccured;
+            }
+        }
+
+        void Piece_ManToKingOccured(Piece i_ChangedPiece)
+        {
+            OnNotifyManToKingOccured(i_ChangedPiece);
         }
 
         public class Piece
         {
+            public event NotifyManToKingOccured NotifyManToKingOccured;
+
             private const int k_ManNumberOfPossibleMoves = 4;
             private const int k_KingNumberOfPossibleMoves = 8;
             private const int k_MaxNumberOfPossibleMoves = 8;
@@ -249,11 +267,20 @@ namespace CheckersGame
             {
                 m_King = true;
                 i_CheckersBoard.TurnManToKingOnBoard(m_CurrPosition);
+                OnManTurnToKing();
             }
 
             public void RemovePiece(CheckersGameBoard i_CheckersBoard)
             {
                 i_CheckersBoard.ErasePieceFromBoard(m_CurrPosition);
+            }
+
+            protected void OnManTurnToKing()
+            {
+                if (NotifyManToKingOccured != null)
+                {
+                    NotifyManToKingOccured.Invoke(this);
+                }
             }
         }
 
@@ -600,8 +627,8 @@ namespace CheckersGame
             }
 
             // updating movement
-            m_LastMovingPiece.MovePiece(i_Move.Value.Destination, m_CheckersBoard);
             OnPieceMoved(i_Move.Value); // Notify form that a piece had moved and send the movement that was done
+            m_LastMovingPiece.MovePiece(i_Move.Value.Destination, m_CheckersBoard);
          
             return nextAction;
         }
@@ -674,25 +701,25 @@ namespace CheckersGame
 
         protected void OnPieceCaptured(Position i_CepturedPiecePosition)
         {
-            if (m_NotifyPieceCaptured != null)
+            if (NotifyPieceCaptured != null)
             {
-                m_NotifyPieceCaptured.Invoke(i_CepturedPiecePosition);
+                NotifyPieceCaptured.Invoke(i_CepturedPiecePosition);
             }
         }
 
         protected void OnPieceMoved(Move i_MovementDone)
         {
-            if (m_NotifyPieceMoved != null)
+            if (NotifyPieceMoved != null)
             {
-                m_NotifyPieceMoved.Invoke(i_MovementDone);
+                NotifyPieceMoved.Invoke(i_MovementDone);
             }
         }
 
         protected void OnInvalidMoveGiven()
         {
-            if (m_NotifyInvalidMoveGiven != null)
+            if (NotifyInvalidMoveGiven != null)
             {
-                m_NotifyInvalidMoveGiven.Invoke();
+                NotifyInvalidMoveGiven.Invoke();
             }
         }
 
@@ -702,9 +729,17 @@ namespace CheckersGame
         uint i_Player1NewScore,
         uint i_Player2NewScore)
         {
-            if (m_NotifyGameOver != null)
+            if (NotifyGameOver != null)
             {
-                m_NotifyGameOver.Invoke(i_WinnerInfo, i_Tie, i_Player1NewScore, i_Player2NewScore);
+                NotifyGameOver.Invoke(i_WinnerInfo, i_Tie, i_Player1NewScore, i_Player2NewScore);
+            }
+        }
+
+        protected void OnNotifyManToKingOccured(Piece i_ChangedPiece)
+        {
+            if (NotifyManToKingOccured != null)
+            {
+                NotifyManToKingOccured.Invoke(i_ChangedPiece);
             }
         }
     }

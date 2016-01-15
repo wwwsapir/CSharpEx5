@@ -14,6 +14,9 @@ namespace CheckersGame
     public class FormGameBoard : Form
     {
         const string k_EmptyString = "";
+        const string k_Player1King = "U";
+        const string k_Player2King = "K";
+
         private Button m_SourcePosition;
         //public event NotifyFatherAboutMove HandleInputMove; TODO check if stays
         private readonly FormGameSettings r_FormGameSettings = new FormGameSettings();
@@ -73,22 +76,21 @@ namespace CheckersGame
 
                 if (r_FormGameSettings.BoardSize == 6)
                 {
-                    InitializeComponent(); // TODO Change to 6 func
+                    InitializeComponentSmall(); // Initialize a 6x6 board
                 }
                 else if (r_FormGameSettings.BoardSize == 8)
                 {
-                    InitializeComponent(); // TODO Change to 8 func
+                    //InitializeComponentMedium(); // TODO Initialize a 8x8 board
                 }
                 else
                 {
                     // r_FormGameSettings.BoardSize == 10
-                    InitializeComponent(); // TODO Change to 10 func
+                    //InitializeComponentLarge(); // TODO Initialize a 10x10 board
                 }
 
                 signForPossibleClickButtons();
                 signForPossibleCheckersEvents();
 
-                //HandleInputMove += BoardForm_InputReceived; TODO check if stays
                 ShowDialog();
             }
         }
@@ -108,25 +110,12 @@ namespace CheckersGame
 
         private void signForPossibleCheckersEvents()
         {
-            r_CheckersLogic.m_NotifyPieceMoved += Checkers_PieceMoved;
-            r_CheckersLogic.m_NotifyPieceCaptured += Checkers_PieceCaptured;
-            r_CheckersLogic.m_NotifyGameOver += Checkers_GameOverOccured;
-            r_CheckersLogic.m_NotifyInvalidMoveGiven += Checkers_InvalidMoveOccured;
+            r_CheckersLogic.NotifyPieceMoved += Checkers_PieceMoved;
+            r_CheckersLogic.NotifyPieceCaptured += Checkers_PieceCaptured;
+            r_CheckersLogic.NotifyGameOver += Checkers_GameOverOccured;
+            r_CheckersLogic.NotifyInvalidMoveGiven += Checkers_InvalidMoveOccured;
+            r_CheckersLogic.NotifyManToKingOccured += Checkers_ManToKingOccured;
         }
-
-        /*
-        private MoveInfo BoardForm_InputReceived(Button i_SrcButton, Button i_DstButton)
-        {
-            MoveInfo moveInfo = new MoveInfo();
-            Position srcPosition = Position.ParseAlphabetPosition(i_SrcButton.Tag.ToString());
-            Position dstPosition = Position.ParseAlphabetPosition(i_DstButton.Tag.ToString());
-            Position? capturedPosition = null;
-            moveInfo.MoveValid = Checkers.CheckIfMoveValid(srcPosition, dstPosition, out capturedPosition);
-            //moveInfo.CapturedCell = capturedPosition.Value.ToAlphabetString(); TODO check if stays
-
-            return moveInfo;
-        }
-        */
 
         private void button_Clicked(object sender, EventArgs e)
         {
@@ -227,7 +216,24 @@ Second Player : {2} scored {3} points!",
             m_SourcePosition = null;
         }
 
-        private void InitializeComponent()
+        private void Checkers_ManToKingOccured(Checkers.Piece i_ChangedPiece)
+        {
+            Button pieceButton = positionStringToButton(i_ChangedPiece.CurrPosition.ToAlphabetString());
+            if (i_ChangedPiece.Owner == Checkers.ePlayerTag.First)
+            {
+                pieceButton.Text = k_Player1King;
+            }
+            else if (i_ChangedPiece.Owner == Checkers.ePlayerTag.Second)
+            {
+                pieceButton.Text = k_Player2King;
+            }
+            else
+            {
+                throw new ApplicationException("Trying to turn unidentified button to king!");
+            }
+        }
+
+        private void InitializeComponentSmall()
         {
             this.button1 = new System.Windows.Forms.Button();
             this.ButtonBa = new System.Windows.Forms.Button();
