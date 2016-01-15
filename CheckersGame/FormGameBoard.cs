@@ -9,13 +9,13 @@ using System.Windows.Forms.VisualStyles;
 
 namespace CheckersGame
 {
-    public delegate FormGameBoard.MoveInfo NotifyFatherAboutMove(Button i_SrcButton, Button i_DstButton);
+    //public delegate Checkers.eAction NotifyFatherAboutMove(Button i_SrcButton, Button i_DstButton); TODO check if stays
 
     public class FormGameBoard : Form
     {
         const string k_EmptyString = "";
         private Button m_SourcePosition;
-        public event NotifyFatherAboutMove HandleInputMove;
+        //public event NotifyFatherAboutMove HandleInputMove; TODO check if stays
         private readonly FormGameSettings r_FormGameSettings = new FormGameSettings();
         private Checkers r_CheckersLogic = new Checkers();
 
@@ -63,60 +63,37 @@ namespace CheckersGame
         public void StartGame()
         {
             r_FormGameSettings.ShowDialog();
-            r_CheckersLogic.InitializeGameLogic(r_FormGameSettings.BoardSize,
-                r_FormGameSettings.Player1Name,
-                r_FormGameSettings.Player2Name,
-                r_FormGameSettings.IsPlayer2Human);
-
-            if (r_FormGameSettings.BoardSize == 6)
+            if (r_FormGameSettings.DialogResult == DialogResult.OK)
             {
-                InitializeComponent();  // TODO Change to 6 func
-            }
-            else if (r_FormGameSettings.BoardSize == 8)
-            {
-                InitializeComponent();  // TODO Change to 8 func
-            }
-            else
-            {
-                // r_FormGameSettings.BoardSize == 10
-                InitializeComponent();  // TODO Change to 10 func
-            }
+                r_CheckersLogic.InitializeGameLogic(
+                    r_FormGameSettings.BoardSize,
+                    r_FormGameSettings.Player1Name,
+                    r_FormGameSettings.Player2Name,
+                    r_FormGameSettings.IsPlayer2Human);
 
-            HandleInputMove += BoardForm_InputReceived;
-            ShowDialog();
-        }
+                if (r_FormGameSettings.BoardSize == 6)
+                {
+                    InitializeComponent(); // TODO Change to 6 func
+                }
+                else if (r_FormGameSettings.BoardSize == 8)
+                {
+                    InitializeComponent(); // TODO Change to 8 func
+                }
+                else
+                {
+                    // r_FormGameSettings.BoardSize == 10
+                    InitializeComponent(); // TODO Change to 10 func
+                }
 
-        private MoveInfo BoardForm_InputReceived(Button i_SrcButton, Button i_DstButton)
-        {
-            MoveInfo moveInfo = new MoveInfo();
-            Position srcPosition = Position.ParseAlphabetPosition(i_SrcButton.Tag.ToString());
-            Position dstPosition = Position.ParseAlphabetPosition(i_DstButton.Tag.ToString());
-            Position? capturedPosition = null;
-            moveInfo.MoveValid = Checkers.CheckIfMoveValid(srcPosition, dstPosition, out capturedPosition);
-            moveInfo.CapturedCell = capturedPosition.Value.ToAlphabetString();
+                signForPossibleClickButtons();
+                signForPossibleCheckersEvents();
 
-            return moveInfo;
-        }
-
-        public class MoveInfo
-        {
-            private bool m_MoveValid;
-            private string m_CapturedCell;
-
-            public bool MoveValid 
-            {
-                get { return m_MoveValid; }
-                set { m_MoveValid = value; }
-            }
-
-            public string CapturedCell
-            {
-                get { return CapturedCell; }
-                set { m_CapturedCell = value; }
+                //HandleInputMove += BoardForm_InputReceived; TODO check if stays
+                ShowDialog();
             }
         }
 
-        public FormGameBoard()
+        private void signForPossibleClickButtons()
         {
             Button currButton;
             foreach (Control control in Controls)
@@ -128,6 +105,28 @@ namespace CheckersGame
                 }
             }
         }
+
+        private void signForPossibleCheckersEvents()
+        {
+            r_CheckersLogic.m_NotifyPieceMoved += Checkers_PieceMoved;
+            r_CheckersLogic.m_NotifyPieceCaptured += Checkers_PieceCaptured;
+            r_CheckersLogic.m_NotifyGameOver += Checkers_GameOverOccured;
+            r_CheckersLogic.m_NotifyInvalidMoveGiven += Checkers_InvalidMoveOccured;
+        }
+
+        /*
+        private MoveInfo BoardForm_InputReceived(Button i_SrcButton, Button i_DstButton)
+        {
+            MoveInfo moveInfo = new MoveInfo();
+            Position srcPosition = Position.ParseAlphabetPosition(i_SrcButton.Tag.ToString());
+            Position dstPosition = Position.ParseAlphabetPosition(i_DstButton.Tag.ToString());
+            Position? capturedPosition = null;
+            moveInfo.MoveValid = Checkers.CheckIfMoveValid(srcPosition, dstPosition, out capturedPosition);
+            //moveInfo.CapturedCell = capturedPosition.Value.ToAlphabetString(); TODO check if stays
+
+            return moveInfo;
+        }
+        */
 
         private void button_Clicked(object sender, EventArgs e)
         {
@@ -144,50 +143,80 @@ namespace CheckersGame
             else
             {
                 // Source position already exists - check if this position is a valid destination
-                MoveInfo moveInfo = OnInputMoveReceived(m_SourcePosition, sender as Button);
-                Move m = Move.Parse(m_SourcePosition.Tag, (sender as Button).Tag);
-                r_CheckersLogic.playRound(move); // can succeed or may not
-                if (!(moveInfo.MoveValid))
-                {
-                    MessageBox.Show("Invalid Move!");
-                }
-                else
-                {
-                    Button capturedButton = PositionStringToButton(moveInfo.CapturedCell);
-                    if (capturedButton != null)
-                    {
-                        capturedButton.Text = k_EmptyString;
-                    }
-                    (sender as Button).Text = m_SourcePosition.Text;
-                    m_SourcePosition.Text = k_EmptyString;
-                    m_SourcePosition = null;
-                }
+                Move newMove = CheckersGame.Move.ParseAlphabetMove(m_SourcePosition.Tag.ToString(), (sender as Button).Tag.ToString());
+                r_CheckersLogic.PlayRound(newMove); // May make the move or not if move is not valid
+                m_SourcePosition.BackColor = Color.White;
+                m_SourcePosition.Click -= button_ClickedAgain;
+                m_SourcePosition.Click += button_Clicked;
+                m_SourcePosition = null;
             }
         }
 
-        private Button PositionStringToButton(string i_PositionStr)
+        private void Checkers_PieceCaptured(Position i_PiecePosition)
+        {
+            Button capturedButton = positionStringToButton(i_PiecePosition.ToAlphabetString());
+            capturedButton.Text = k_EmptyString;
+        }
+
+        private void Checkers_PieceMoved(Move i_MoveDone)
+        {
+            Button srcButton = positionStringToButton(i_MoveDone.Source.ToAlphabetString());
+            Button dstButton = positionStringToButton(i_MoveDone.Destination.ToAlphabetString());
+            dstButton.Text = srcButton.Text;
+            srcButton.Text = k_EmptyString;
+        }
+
+        private void Checkers_InvalidMoveOccured()
+        {
+            MessageBox.Show("Invalid Move!");
+        }
+
+        private void Checkers_GameOverOccured(
+            PlayerInfo i_WinnerInfo,
+            bool i_Tie,
+            uint i_Player1NewScore,
+            uint i_Player2NewScore)
+        {
+            string message;
+            if (i_Tie)
+            {
+                message = string.Format(
+                    @"It's a Tie!
+First Player : {0} scored {1} points!
+Second Player : {2} scored {3} points!",
+                    r_CheckersLogic.Player1Name,
+                    i_Player1NewScore,
+                    r_CheckersLogic.Player2Name,
+                    i_Player2NewScore);
+            }
+            else
+            {
+                message = string.Format(
+                @" {0} is the Winner !
+{1} scored {2} points!
+{3} scored {4} points!",
+                    i_WinnerInfo.Name,
+                    r_CheckersLogic.Player1Name,
+                    i_Player1NewScore,
+                    r_CheckersLogic.Player2Name,
+                    i_Player2NewScore);
+            }
+
+            MessageBox.Show(message);
+        }
+
+        private Button positionStringToButton(string i_PositionStr)
         {
             Button buttonToReturn = null;
             foreach (Control control in Controls)
             {
-                if (control.Tag.ToString() == i_PositionStr)
+                if (control.Tag != null && control.Tag.ToString() == i_PositionStr)
                 {
                     buttonToReturn = control as Button;
                 }
             }
 
             return buttonToReturn;
-        }
-
-        private MoveInfo OnInputMoveReceived(Button i_srcButton, Button i_dstButton)
-        {
-            MoveInfo moveInfo = new MoveInfo();
-            if (HandleInputMove != null)
-            {
-                moveInfo = HandleInputMove.Invoke(i_srcButton, i_dstButton);
-            }
-
-            return moveInfo;
         }
 
         private void button_ClickedAgain(object sender, EventArgs e)

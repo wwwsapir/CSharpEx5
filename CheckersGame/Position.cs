@@ -23,11 +23,11 @@
             set { m_Col = value; }
         }
 
-        // Example: "Af" -> (5,0)
+        // Example: "Af" -> (0,5)
         public static Position ParseAlphabetPosition(string i_CheckersBoardPosition)
         {
-            int x = char.ToUpper(i_CheckersBoardPosition[1]) - 'A';
-            int y = char.ToUpper(i_CheckersBoardPosition[0]) - 'A';
+            int x = char.ToUpper(i_CheckersBoardPosition[0]) - 'A';
+            int y = char.ToUpper(i_CheckersBoardPosition[1]) - 'A';
 
             return new Position(x, y);
         }
@@ -40,6 +40,13 @@
             sumPosition.Col += i_PositionToAdd.Col;
 
             return sumPosition;
+        }
+
+        public string ToAlphabetString()
+        {
+            char rowChar = (char)('A' + m_Row);
+            char colChar = (char)('a' + m_Col);
+            return rowChar.ToString() + colChar.ToString();
         }
     }
 }
