@@ -25,7 +25,8 @@
 
         public static Move ParseAlphabetMove(string i_SrcPosition, string i_DstPosition)
         {
-            return new Move(Position.ParseAlphabetPosition(i_SrcPosition),
+            return new Move(
+                Position.ParseAlphabetPosition(i_SrcPosition),
                 Position.ParseAlphabetPosition(i_DstPosition));
         }
     }

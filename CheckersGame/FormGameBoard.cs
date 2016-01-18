@@ -6,10 +6,11 @@ namespace CheckersGame
 {
     public class FormGameBoard : Form
     {
-        private const string k_ComputerName = "Computer";
+        private const string k_DefaultHumanName1 = "Player1";
+        private const string k_DefaultHumanName2 = "Player2";
+        private static readonly string[] sr_CellSymbols = { string.Empty, "O", "X", "U", "K" };
         private readonly FormGameSettings r_FormGameSettings = new FormGameSettings();
-        private Checkers r_CheckersLogic = new Checkers();
-        private string[] sr_cellSymbols = { string.Empty, "O", "X", "U", "K" };
+        private readonly Checkers r_CheckersLogic = new Checkers();
         private Button m_SourcePosition;
 
         private Button ButtonBa;
@@ -123,10 +124,15 @@ namespace CheckersGame
             r_FormGameSettings.ShowDialog();
             if (r_FormGameSettings.DialogResult == DialogResult.OK)
             {
+                // update names
+                string player1Name = string.IsNullOrEmpty(r_FormGameSettings.Player1Name) ? k_DefaultHumanName1 : this.r_FormGameSettings.Player1Name;
+                string player2Name = string.IsNullOrEmpty(r_FormGameSettings.Player2Name) ? k_DefaultHumanName2 : this.r_FormGameSettings.Player2Name;
+
+                // initialize logic instance
                 r_CheckersLogic.InitializeGameLogic(
                     r_FormGameSettings.BoardSize,
-                    r_FormGameSettings.Player1Name,
-                    r_FormGameSettings.Player2Name,
+                    player1Name,
+                    player2Name,
                     r_FormGameSettings.IsPlayer2Human);
 
                 switch (r_CheckersLogic.BoardSize)
@@ -145,7 +151,8 @@ namespace CheckersGame
                 }
 
                 this.labelPlayer1Name.Text = this.r_CheckersLogic.Player1Name;
-                this.labelPlayer2Name.Text = this.r_FormGameSettings.IsPlayer2Human ? this.r_CheckersLogic.Player2Name : k_ComputerName;
+                this.labelPlayer2Name.Text = this.r_CheckersLogic.Player2Name;
+
                 signForPossibleClickButtons();
                 signForPossibleCheckersEvents();
                 ShowDialog();
@@ -170,7 +177,7 @@ namespace CheckersGame
         {
             this.r_CheckersLogic.CellChanged += m_CheckersBoard_CellChanged;
             r_CheckersLogic.GameOver += this.m_CheckersLogic_GameOverOccured;
-            r_CheckersLogic.InvalidMoveGiven += m_Checkers_InvalidMoveOccured;
+            r_CheckersLogic.InvalidMoveGiven += m_CheckersLogic_InvalidMoveOccured;
         }
 
         // When cell in the logic parts changes, this function updates the relevant cells in gui
@@ -183,19 +190,19 @@ namespace CheckersGame
                 switch (newMode)
                 {
                     case CheckersGameBoard.eCellMode.Empty:
-                        buttonToBeChanged.Text = sr_cellSymbols[(int)CheckersGameBoard.eCellMode.Empty];
+                        buttonToBeChanged.Text = sr_CellSymbols[(int)CheckersGameBoard.eCellMode.Empty];
                         break;
                     case CheckersGameBoard.eCellMode.Player1Piece:
-                        buttonToBeChanged.Text = sr_cellSymbols[(int)CheckersGameBoard.eCellMode.Player1Piece];
+                        buttonToBeChanged.Text = sr_CellSymbols[(int)CheckersGameBoard.eCellMode.Player1Piece];
                         break;
                     case CheckersGameBoard.eCellMode.Player2Piece:
-                        buttonToBeChanged.Text = sr_cellSymbols[(int)CheckersGameBoard.eCellMode.Player2Piece];
+                        buttonToBeChanged.Text = sr_CellSymbols[(int)CheckersGameBoard.eCellMode.Player2Piece];
                         break;
                     case CheckersGameBoard.eCellMode.Player1King:
-                        buttonToBeChanged.Text = sr_cellSymbols[(int)CheckersGameBoard.eCellMode.Player1King];
+                        buttonToBeChanged.Text = sr_CellSymbols[(int)CheckersGameBoard.eCellMode.Player1King];
                         break;
                     case CheckersGameBoard.eCellMode.Player2King:
-                        buttonToBeChanged.Text = sr_cellSymbols[(int)CheckersGameBoard.eCellMode.Player2King];
+                        buttonToBeChanged.Text = sr_CellSymbols[(int)CheckersGameBoard.eCellMode.Player2King];
                         break;
                     default:
                         throw new ArgumentException("Invalid Enum value : eCellMode");
@@ -229,9 +236,9 @@ namespace CheckersGame
             }
         }
 
-        private void m_Checkers_InvalidMoveOccured(object sender, EventArgs e)
+        private void m_CheckersLogic_InvalidMoveOccured(object sender, EventArgs e)
         {
-            MessageBox.Show("Invalid Move!", this.Text, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+            MessageBox.Show(@"Invalid Move!", this.Text, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
         }
 
         // Game over Occurd
@@ -253,7 +260,7 @@ Another Round?",
             else
             {
                 message = string.Format(
-                @" {0} is the Winner !
+                @"{0} is the Winner !
 {1} scored {2} points!
 {3} scored {4} points!
 Another Round?",

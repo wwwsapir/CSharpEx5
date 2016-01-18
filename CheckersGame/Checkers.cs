@@ -10,16 +10,15 @@ namespace CheckersGame
 
     public class Checkers
     {
-        private static readonly byte sr_MaxStrLength = 20;
+        private readonly LinkedList<Move> r_CurrentlyLegalMoves = new LinkedList<Move>();
+        private PlayerInfo m_Player1;
+        private PlayerInfo m_Player2;
         private CheckersGameBoard m_CheckersBoard;
         private List<Piece> m_Player1PiecesList;
         private List<Piece> m_Player2PiecesList;
-        private PlayerInfo m_Player1;
-        private PlayerInfo m_Player2;
         private Piece m_LastMovingPiece;
         private PlayerInfo m_CurrPlayerTurn;
         private bool m_FirstMoveThisTurn = true;
-        private LinkedList<Move> r_CurrentlyLegalMoves = new LinkedList<Move>();
 
         // Events:
         public event InvalidMoveEventHandler InvalidMoveGiven;
@@ -32,7 +31,7 @@ namespace CheckersGame
             remove { this.m_CheckersBoard.CellChanged -= value; }
         }
 
-        public void InitializeBoard(CheckersGameBoard.eBoardSize i_BoardSize)
+        private void initializeBoard(CheckersGameBoard.eBoardSize i_BoardSize)
         {
             if (!CheckersGameBoard.IsBoardSizeValid((byte)i_BoardSize))
             {
@@ -51,7 +50,7 @@ namespace CheckersGame
         {
             const bool v_Human = true;
 
-            InitializeBoard(i_BoardSize);
+            initializeBoard(i_BoardSize);
             m_Player1 = new PlayerInfo(i_Player1Name, v_Human, ePlayerTag.First);
             m_Player2 = new PlayerInfo(i_Player2Name, i_IsPlayer2Human, ePlayerTag.Second);
             m_CurrPlayerTurn = m_Player1;
@@ -88,14 +87,6 @@ namespace CheckersGame
         public string Player2Name
         {
             get { return m_Player2.Name; }
-        }
-
-        public static byte MaxStrLength
-        {
-            get
-            {
-                return sr_MaxStrLength;
-            }
         }
 
         private void buildPlayersPiecesList()
@@ -261,6 +252,7 @@ namespace CheckersGame
         {
             m_CheckersBoard.InitializePiecesOnBoard();
             buildPlayersPiecesList();
+            this.m_CurrPlayerTurn = this.m_Player1;
         }
 
         // Check if the game is over
@@ -339,7 +331,7 @@ namespace CheckersGame
 	        if (isMoveValid(i_MoveToApply))
 	        {
 	            const bool v_OnlyCaptureMoves = true;
-	            eAction lastAction = ApplyMove(i_MoveToApply);
+	            eAction lastAction = applyMove(i_MoveToApply);
                 r_CurrentlyLegalMoves.Clear();
                 m_LastMovingPiece.AddLegalMovesToList(r_CurrentlyLegalMoves, m_CheckersBoard, v_OnlyCaptureMoves);
 	            if (lastAction == eAction.Capture && r_CurrentlyLegalMoves.Any()) 
@@ -410,7 +402,7 @@ namespace CheckersGame
             {
                 int randomListIndex = new Random().Next(0, r_CurrentlyLegalMoves.Count);
                 Move machineCurrMove = r_CurrentlyLegalMoves.ElementAt(randomListIndex);
-                eAction lastAction = ApplyMove(machineCurrMove);
+                eAction lastAction = applyMove(machineCurrMove);
                 r_CurrentlyLegalMoves.Clear();
                 m_LastMovingPiece.AddLegalMovesToList(r_CurrentlyLegalMoves, m_CheckersBoard, v_OnlyCaptureMoves);
                 if (lastAction == eAction.Capture && r_CurrentlyLegalMoves.Any())
@@ -427,7 +419,7 @@ namespace CheckersGame
         }
 
         // applying move,  returning whether a capture move happend
-        public eAction ApplyMove(Move? i_Move)
+        private eAction applyMove(Move? i_Move)
         {
             eAction nextAction = eAction.Continue;
             m_LastMovingPiece = getPieceByPosition(m_CurrPlayerTurn, i_Move.Value.Source);
@@ -512,7 +504,7 @@ namespace CheckersGame
             return i_Player == m_Player1 ? m_Player1PiecesList : m_Player2PiecesList;
         }
 
-        protected void OnInvalidMoveGiven(EventArgs e)
+        protected virtual void OnInvalidMoveGiven(EventArgs e)
         {
             if (InvalidMoveGiven != null)
             {
@@ -520,7 +512,7 @@ namespace CheckersGame
             }
         }
 
-        protected void OnGameOverOccured(GameOverEventArgs e)
+        protected virtual void OnGameOverOccured(GameOverEventArgs e)
         {
             if (GameOver != null)
             {
