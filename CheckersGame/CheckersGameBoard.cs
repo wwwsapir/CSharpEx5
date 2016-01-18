@@ -6,9 +6,24 @@ namespace CheckersGame
 {
     public class CheckersGameBoard
     {
+        public delegate void CellChangedEventHandler(object sender, CellChangedEventArgs e);
+      
         private readonly eBoardSize r_BoardSize;
-        private readonly eCellMode[,] r_BoardMatrix;
+        private readonly GameMatrix r_BoardMatrix;
         private readonly byte[] r_NumOfInitialPieces = { 8, 12, 16 }; // respectively to eBoardSize :small/medium/large
+        
+        public event CellChangedEventHandler CellChanged
+        {
+            add
+            {
+                this.r_BoardMatrix.CellChanged += value;
+            }
+
+            remove
+            {
+                 this.r_BoardMatrix.CellChanged -= value;
+            }
+        }
 
         public enum eBoardSize
         {
@@ -31,14 +46,53 @@ namespace CheckersGame
             return i_NumToCheck % 2 != 0;
         }
 
-        public eCellMode[,] BoardMatrix 
+        public eCellMode this[int i_X, int i_Y]
         {
-            get { return r_BoardMatrix; }
+            get
+            {
+                return this.r_BoardMatrix[i_X, i_Y];
+            }
         }
 
         public eBoardSize BoardSize
         {
             get { return r_BoardSize; }
+        }
+
+        public class GameMatrix
+        {
+            private readonly eCellMode[,] r_BoardMatrix;
+
+            public event CellChangedEventHandler CellChanged;
+
+            public GameMatrix(int i_Rows, int i_Cols)
+            {
+                r_BoardMatrix = new eCellMode[i_Rows, i_Cols];
+            }
+
+            public eCellMode this[int i_X, int i_Y]
+            {
+                get
+                {
+                    return this.r_BoardMatrix[i_X, i_Y];
+                }
+
+                set
+                {
+                    this.r_BoardMatrix[i_X, i_Y] = value;
+                    OnCellChanged(new CellChangedEventArgs(new Position(i_X, i_Y), value));
+                }
+            }
+
+            protected virtual void OnCellChanged(CellChangedEventArgs e)
+            {
+                // check if someone is listening
+                if (CellChanged != null)
+                {
+                    // raise the event:
+                    CellChanged.Invoke(this, e);
+                }
+            }
         }
 
         // Checks if the given number can be a checkers board size
@@ -52,7 +106,7 @@ namespace CheckersGame
         public CheckersGameBoard(eBoardSize i_BoardSize)
         {
             r_BoardSize = i_BoardSize;
-            r_BoardMatrix = new eCellMode[(int)r_BoardSize, (int)r_BoardSize];           
+            r_BoardMatrix = new GameMatrix((int)r_BoardSize, (int)r_BoardSize);           
             InitializePiecesOnBoard();
         }
 

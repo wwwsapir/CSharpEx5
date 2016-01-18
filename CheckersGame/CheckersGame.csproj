@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CellChangedEventArgs.cs" />
     <Compile Include="Checkers.cs" />
     <Compile Include="CheckersGameBoard.cs" />
     <Compile Include="FormGameBoard.cs">
@@ -57,6 +58,8 @@
     <Compile Include="FormGameSettings.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="GameOverEventArgs.cs" />
+    <Compile Include="InvalidMoveEventHandler.cs" />
     <Compile Include="Move.cs" />
     <Compile Include="PlayerInfo.cs" />
     <Compile Include="Position.cs" />

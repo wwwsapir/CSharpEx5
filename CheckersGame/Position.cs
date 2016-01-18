@@ -32,7 +32,7 @@
             return new Position(x, y);
         }
 
-        //Adds a position to this position
+        // Adds a position to this position
         public Position AddPosition(Position i_PositionToAdd)
         {
             Position sumPosition = new Position(m_Row, m_Col);

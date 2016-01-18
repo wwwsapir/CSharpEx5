@@ -1,27 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.ComponentModel;
 
 namespace CheckersGame
 {
-    public delegate void NotifyPieceCaptured(Position i_CapturedPiecePosition);
-    public delegate void NotifyPieceMoved(Move i_MovementDone);
-    public delegate void NotifyInvalidMoveGiven();
-    public delegate void NotifyGameOver(
-        PlayerInfo i_WinnerInfo,
-        bool i_Tie,
-        uint i_Player1NewScore,
-        uint i_Player2NewScore);
-    public delegate void NotifyManToKingOccured(Checkers.Piece i_ChangedPiece);
+    public delegate void InvalidMoveEventHandler(object sender, EventArgs e);
+
+    public delegate void GameOverEventHandler(object sender, GameOverEventArgs e);
 
     public class Checkers
     {
-        private const string k_First = "first";
-        private const string k_Second = "second";
-
-        private const char k_Delimiter = '>';
-
         private static readonly byte sr_MaxStrLength = 20;
         private CheckersGameBoard m_CheckersBoard;
         private List<Piece> m_Player1PiecesList;
@@ -33,27 +21,30 @@ namespace CheckersGame
         private bool m_FirstMoveThisTurn = true;
         private LinkedList<Move> r_CurrentlyLegalMoves = new LinkedList<Move>();
 
-        //Delegated:
-        public event NotifyPieceCaptured NotifyPieceCaptured;
-        public event NotifyPieceMoved NotifyPieceMoved;
-        public event NotifyInvalidMoveGiven NotifyInvalidMoveGiven;
-        public event NotifyGameOver NotifyGameOver;
-        public event NotifyManToKingOccured NotifyManToKingOccured;
+        // Events:
+        public event InvalidMoveEventHandler InvalidMoveGiven;
 
-        public void InitializeBoard(byte i_BoardSize)
+        public event GameOverEventHandler GameOver;
+
+        public event CheckersGameBoard.CellChangedEventHandler CellChanged
         {
-            if (!CheckersGameBoard.IsBoardSizeValid(i_BoardSize))
+            add { this.m_CheckersBoard.CellChanged += value; }
+            remove { this.m_CheckersBoard.CellChanged -= value; }
+        }
+
+        public void InitializeBoard(CheckersGameBoard.eBoardSize i_BoardSize)
+        {
+            if (!CheckersGameBoard.IsBoardSizeValid((byte)i_BoardSize))
             {
                 throw new ArgumentException();
             }
-            else
-            {
-                m_CheckersBoard = new CheckersGameBoard((CheckersGameBoard.eBoardSize)i_BoardSize);
-            }
+
+            m_CheckersBoard = new CheckersGameBoard(i_BoardSize);
         }
 
         // Initializes the game - players and board size
-        public void InitializeGameLogic(byte i_BoardSize, 
+        public void InitializeGameLogic(
+            CheckersGameBoard.eBoardSize i_BoardSize, 
             string i_Player1Name,
             string i_Player2Name,
             bool i_IsPlayer2Human)
@@ -65,6 +56,14 @@ namespace CheckersGame
             m_Player2 = new PlayerInfo(i_Player2Name, i_IsPlayer2Human, ePlayerTag.Second);
             m_CurrPlayerTurn = m_Player1;
             buildPlayersPiecesList();
+        }
+
+        public CheckersGameBoard.eBoardSize BoardSize
+        {
+            get
+            {
+                return this.m_CheckersBoard.BoardSize;
+            }
         }
 
         public enum ePlayerTag
@@ -109,27 +108,10 @@ namespace CheckersGame
 
             m_Player1PiecesList = m_CheckersBoard.BuildPlayerPiecesList(ePlayerTag.First);
             m_Player2PiecesList = m_CheckersBoard.BuildPlayerPiecesList(ePlayerTag.Second);
-            signToPiecesTurnToKingNotifier(m_Player1PiecesList);
-            signToPiecesTurnToKingNotifier(m_Player2PiecesList);
-        }
-
-        void signToPiecesTurnToKingNotifier(List<Piece> i_CurrPiecesList)
-        {
-            foreach (Piece piece in i_CurrPiecesList)
-            {
-                piece.NotifyManToKingOccured += Piece_ManToKingOccured;
-            }
-        }
-
-        void Piece_ManToKingOccured(Piece i_ChangedPiece)
-        {
-            OnNotifyManToKingOccured(i_ChangedPiece);
         }
 
         public class Piece
         {
-            public event NotifyManToKingOccured NotifyManToKingOccured;
-
             private const int k_ManNumberOfPossibleMoves = 4;
             private const int k_KingNumberOfPossibleMoves = 8;
             private const int k_MaxNumberOfPossibleMoves = 8;
@@ -177,7 +159,7 @@ namespace CheckersGame
 
             // Goes over possible moves of a piece and adds it into the list if it's a valid move for this part of the round
             public void AddLegalMovesToList(
-                LinkedList<Move> i_lLegalMovesList,
+                LinkedList<Move> i_LegalMovesList,
                 CheckersGameBoard i_CheckersGameBoard,
                 bool i_OnlyCaptureMoves)
             {
@@ -195,7 +177,7 @@ namespace CheckersGame
                             LinkedListNode<Move> tempNode = new LinkedListNode<Move>(tempMove);
                            
                             // If we only need capture moves and it's a capture move; or if we don't nessecarily need a capture move - add to list:
-                            i_lLegalMovesList.AddLast(tempNode);                         
+                            i_LegalMovesList.AddLast(tempNode);                         
                     }
                 }
             }
@@ -207,7 +189,7 @@ namespace CheckersGame
                 bool moveValid = !i_CheckersGameBoard.IsPositionOutOfBounds(i_PositionToExamine);
                 if (moveValid)
                 {
-                    moveValid &= i_CheckersGameBoard.BoardMatrix[i_PositionToExamine.Row, i_PositionToExamine.Col] == CheckersGameBoard.eCellMode.Empty;
+                    moveValid &= i_CheckersGameBoard[i_PositionToExamine.Row, i_PositionToExamine.Col] == CheckersGameBoard.eCellMode.Empty;
                     Position? possibleCapturePosition = GetPossibleCapturePositionIfExists(i_PositionToExamine);
 
                     // If the new position is 2 cells far from the current one
@@ -218,17 +200,17 @@ namespace CheckersGame
 
                         if (r_Owner == ePlayerTag.First)
                         {
-                            moveValid &= i_CheckersGameBoard.BoardMatrix[middleRow, middleCol]
+                            moveValid &= i_CheckersGameBoard[middleRow, middleCol]
                                          == CheckersGameBoard.eCellMode.Player2Piece
-                                         || i_CheckersGameBoard.BoardMatrix[middleRow, middleCol]
+                                         || i_CheckersGameBoard[middleRow, middleCol]
                                          == CheckersGameBoard.eCellMode.Player2King;
                         }
                         else
                         {
                             // if(r_Owner == ePlayerTag.Second)
-                            moveValid &= i_CheckersGameBoard.BoardMatrix[middleRow, middleCol]
+                            moveValid &= i_CheckersGameBoard[middleRow, middleCol]
                                          == CheckersGameBoard.eCellMode.Player1Piece
-                                         || i_CheckersGameBoard.BoardMatrix[middleRow, middleCol]
+                                         || i_CheckersGameBoard[middleRow, middleCol]
                                          == CheckersGameBoard.eCellMode.Player1King;
                         }
 
@@ -267,91 +249,19 @@ namespace CheckersGame
             {
                 m_King = true;
                 i_CheckersBoard.TurnManToKingOnBoard(m_CurrPosition);
-                OnManTurnToKing();
             }
 
             public void RemovePiece(CheckersGameBoard i_CheckersBoard)
             {
                 i_CheckersBoard.ErasePieceFromBoard(m_CurrPosition);
             }
-
-            protected void OnManTurnToKing()
-            {
-                if (NotifyManToKingOccured != null)
-                {
-                    NotifyManToKingOccured.Invoke(this);
-                }
-            }
         }
 
-        // The game's main loop - handles thes turns and end of game
-        /*public void StartGame()
-        {
-            handlePlayersRounds();
-            while (r_UserInterface.PlayersWantAnotherGameRound())
-            {
-                startANewGame();
-            }           
-        }
-        
-        private void startANewGame()
-        {
-            resetGame();
-            handlePlayersRounds();       
-        }
-        TODO: check if need to use this */
-
-        private void resetGame()
+        public void ResetGame()
         {
             m_CheckersBoard.InitializePiecesOnBoard();
             buildPlayersPiecesList();
         }
-
-        /*
-        private void handlePlayersRounds()
-        {
-            const bool v_FirstMoveThisTurn = true;    // Sending False in the first move, every turn
-            bool gameContinue = true;
-
-            while (gameContinue)
-            {
-                gameContinue = PlayRound(v_FirstMoveThisTurn);
-                m_CurrPlayerTurn = enemyPlayer(m_CurrPlayerTurn);   // Switch player turn
-                if (gameContinue)
-                {
-                    gameContinue = PlayRound(v_FirstMoveThisTurn);
-                }
-            }
-        }   
-
-        // One round in the game - Player1 then player2 turns
-        public bool PlayRound(bool i_FirstMoveThisTurn)
-        {
-            bool v_OnlyCaptureMoves = true;
-            Move? playerRequestMove;
-            eAction nextAction = eAction.Continue;
-            LinkedList<Move> legalMovesList;
-
-            // if a capture move available, accept only capture move
-            if (areLegalMovesExistForPlayer(m_CurrPlayerTurn, v_OnlyCaptureMoves))
-            {   
-                nextAction = getNextActionFromPlayer(out playerRequestMove);               
-            }
-            else if (i_FirstMoveThisTurn)
-            {   
-                // check if there are legal-non-capture moves, if so, get moves from player
-                if (areLegalMovesExistForPlayer(m_CurrPlayerTurn, !v_OnlyCaptureMoves))
-                {
-                    nextAction = getNextActionFromPlayer(out playerRequestMove);
-                }
-            }
-
-            nextAction = gameOver() ? eAction.GameOver : nextAction;
-            bool willQuitGame = handleNextAction(m_CurrPlayerTurn, nextAction);
-
-            return willQuitGame;
-        }
-         TODO check if stays */
 
         // Check if the game is over
         private bool gameOver()
@@ -364,90 +274,30 @@ namespace CheckersGame
         private void checkIfPlayersHaveMoves(out bool o_Player1LegalMovesEmpty, out bool o_Player2LegalMovesEmpty)
         {
             const bool v_OnlyCaptureMoves = true;
-            o_Player1LegalMovesEmpty = !areLegalMovesExistForPlayer(m_Player1,!v_OnlyCaptureMoves);
-            o_Player2LegalMovesEmpty = !areLegalMovesExistForPlayer(m_Player2,!v_OnlyCaptureMoves);
+            o_Player1LegalMovesEmpty = !areLegalMovesExistForPlayer(m_Player1, !v_OnlyCaptureMoves);
+            o_Player2LegalMovesEmpty = !areLegalMovesExistForPlayer(m_Player2, !v_OnlyCaptureMoves);
         }
 
-        /*
-        private eAction getNextActionFromPlayer(out Move? i_PlayerRequestMove)
-        {
-            // get next action from player
-            eAction returnedAction = m_CurrPlayerTurn.Human
-                             ? getNextHumanAction(out i_PlayerRequestMove)
-                             : getMachineAction(out i_PlayerRequestMove);
-
-            // apply movement if game is not over
-            returnedAction = returnedAction != eAction.GameOver && returnedAction != eAction.Quit ?
-                             ApplyMove(i_PlayerRequestMove)
-                             : returnedAction;
-
-            return returnedAction;
-        }
-
-        private bool handleNextAction(PlayerInfo m_CurrPlayerTurn, eAction i_NextAction)
-        {
-            const bool v_FirstMove = true;
-            bool continueGame;
-
-            switch (i_NextAction)
-            {
-                case eAction.Capture:
-                    // Recursive call to another move of the same player, this time only for the last played piece
-                    continueGame = PlayRound(!v_FirstMove);
-                    break;
-                case eAction.GameOver:
-                    handleGameOver();
-                    continueGame = false;
-                    break;
-                case eAction.Quit:
-                    handleQuit(m_CurrPlayerTurn);
-                    continueGame = false;
-                    break;
-                case eAction.Continue:
-                    // Continue to next other player's turn
-                    continueGame = true;
-                    break;
-                default:
-                    throw new InvalidEnumArgumentException();
-            }
-
-            return continueGame;
-        }
-
-        // player pressed quit loses  the game and all his soldiers, here we update the score, and show game info
-        private void handleQuit(PlayerInfo m_CurrPlayerTurn)
-        {
-            PlayerInfo winner = enemyPlayer(m_CurrPlayerTurn);
-
-            // Player who quits -loses all his Pieces
-            List<Piece> quittingPlayerPiecesList = getPlayerPiecesList(m_CurrPlayerTurn);
-            quittingPlayerPiecesList.Clear();          
-            addScore(winner);
-            //r_UserInterface.ShowWinningState(winner, m_CurrPlayerTurn);                
-        }
-         TODO: check if stays */
-
-        // handle tie/ wiining situation
+        // handle tie/ winning situation
         private void handleGameOver()
         {
             const bool v_Tie = true;
-            PlayerInfo winnerPlayer = null;
+            PlayerInfo strongerPlayer;
             bool player1LegalMovesEmpty, player2LegalMovesEmpty;
             checkIfPlayersHaveMoves(out player1LegalMovesEmpty, out player2LegalMovesEmpty);                      
 
             if (player1LegalMovesEmpty && player2LegalMovesEmpty)
             {   // Tie state
-                PlayerInfo strongerPlayer = whichPlayerHaveMoreSoldiers();
+                strongerPlayer = whichPlayerHaveMoreSoldiers();
                 addScore(strongerPlayer);
-                OnGameOverOccured(winnerPlayer, v_Tie, m_Player1.Score, m_Player2.Score);
+                OnGameOverOccured(new GameOverEventArgs(strongerPlayer, enemyPlayer(strongerPlayer), v_Tie));
             }
             else
             {   // Win state
-                winnerPlayer = player1LegalMovesEmpty ? m_Player2 : m_Player1;
-                addScore(winnerPlayer);
-                OnGameOverOccured(winnerPlayer, !v_Tie, m_Player1.Score, m_Player2.Score);               
+                strongerPlayer = player1LegalMovesEmpty ? m_Player2 : m_Player1;
+                addScore(strongerPlayer);
+                OnGameOverOccured(new GameOverEventArgs(strongerPlayer, enemyPlayer(strongerPlayer), !v_Tie));               
             }
-            
         }
 
         // considering a king equals more soldiers(4)
@@ -474,39 +324,7 @@ namespace CheckersGame
 
             return soldiersNumber;
         }
-
-        // randomly choosing a move
-        private eAction getMachineAction(out Move? i_PlayerRequestMove)
-        {                     
-            i_PlayerRequestMove = null;
-
-            eAction nextAction = eAction.Continue;
-            int listLength = r_CurrentlyLegalMoves.Count;
-            if (listLength != 0)
-            {
-                int randomListIndex = new Random().Next(0, listLength);
-                i_PlayerRequestMove = r_CurrentlyLegalMoves.ElementAt(randomListIndex);
-            }
-
-            return nextAction;
-        }
-
-        private eAction getNextHumanAction(out Move? i_PlayerRequestMove)
-        {/*
-            // Continue loop until legal move given, or player wants to quit
-            eAction nextAction = r_UserInterface.GetNextMove(m_CurrPlayerTurn, out i_PlayerRequestMove);
-            while (nextAction != eAction.Quit && !i_LegalMovesList.Contains(i_PlayerRequestMove.Value))
-            {
-                r_UserInterface.ShowBadInputMessage();
-                nextAction = r_UserInterface.GetNextMove(m_CurrPlayerTurn, out i_PlayerRequestMove);
-            }           
-            //TODO: Put the loop that gets the move in GUI class
-            //TODO: GUI class should use a "isInputValid" function of Checkers to see if the loop continues
-          * return nextAction;*/
-            i_PlayerRequestMove = null;     //Test EXAMPLEEEEE!!!@#!@$#%#
-            return eAction.Capture;     //Test EXAMPLEEEEE!!!@#!@$#%#
-        }
-
+       
         private bool areLegalMovesExistForPlayer(
             PlayerInfo i_PlayerToCheckMoves,
             bool i_OnlyCaptureMoves)
@@ -524,13 +342,14 @@ namespace CheckersGame
 	            eAction lastAction = ApplyMove(i_MoveToApply);
                 r_CurrentlyLegalMoves.Clear();
                 m_LastMovingPiece.AddLegalMovesToList(r_CurrentlyLegalMoves, m_CheckersBoard, v_OnlyCaptureMoves);
-	            if (lastAction == eAction.Capture && r_CurrentlyLegalMoves.Count > 0) // will check if have a second capture move from specific position
+	            if (lastAction == eAction.Capture && r_CurrentlyLegalMoves.Any()) 
 	            {
+                    // the player keeping the turn, but we update that it will not be the first move, as in series of capture moves
 	                m_FirstMoveThisTurn = false;
-	                // m_NextPlayerInTurn : the player keeping the turn, but we update that it will not be the first move
 	            }
 	            else
 	            {
+                    // turn goes to the next player
 	                m_CurrPlayerTurn = enemyPlayer(m_CurrPlayerTurn);
 	                m_FirstMoveThisTurn = true;
 	                if (!m_CurrPlayerTurn.Human)
@@ -546,22 +365,22 @@ namespace CheckersGame
 	        }
 	        else
 	        {
-	            OnInvalidMoveGiven(); // show prompt dialog "Move is not Valid"
+	            OnInvalidMoveGiven(new EventArgs()); // show prompt dialog "Move is not Valid"
 	        }
         }
 
         private bool isMoveValid(Move i_MoveToCheck)
         {
             const bool v_OnlyCaptureMoves = true;
-	        if(!m_FirstMoveThisTurn) // in middle of a series of captures moves
-	        {	
+	        if(!m_FirstMoveThisTurn)
+            {	// in middle of a series of captures moves
                 r_CurrentlyLegalMoves.Clear();
 		    	m_LastMovingPiece.AddLegalMovesToList(r_CurrentlyLegalMoves, m_CheckersBoard, v_OnlyCaptureMoves);
 	        }
 	        else
 	        {		
 		        fillLegalMovesList(m_CurrPlayerTurn, v_OnlyCaptureMoves);   // Try to find only capture moves
-	            if (r_CurrentlyLegalMoves.Count == 0)
+	            if (!r_CurrentlyLegalMoves.Any())
 	            {
 	                fillLegalMovesList(m_CurrPlayerTurn, !v_OnlyCaptureMoves); // get all possible moves
 	            }
@@ -570,13 +389,14 @@ namespace CheckersGame
             return r_CurrentlyLegalMoves.Contains(i_MoveToCheck);
         }
 
-        void makeMachineMove()
+        private void makeMachineMove()
         {
             const bool v_OnlyCaptureMoves = true;
             if (m_FirstMoveThisTurn)
             {
+                // int the middle of capture moves series
                 fillLegalMovesList(m_CurrPlayerTurn, v_OnlyCaptureMoves);
-                if (r_CurrentlyLegalMoves.Count == 0)
+                if (!r_CurrentlyLegalMoves.Any())
                 {
                     fillLegalMovesList(m_CurrPlayerTurn, !v_OnlyCaptureMoves);
                 }
@@ -586,14 +406,14 @@ namespace CheckersGame
                 m_LastMovingPiece.AddLegalMovesToList(r_CurrentlyLegalMoves, m_CheckersBoard, v_OnlyCaptureMoves);
             }
 
-            if (r_CurrentlyLegalMoves.Count > 0)
+            if (r_CurrentlyLegalMoves.Any())
             {
                 int randomListIndex = new Random().Next(0, r_CurrentlyLegalMoves.Count);
                 Move machineCurrMove = r_CurrentlyLegalMoves.ElementAt(randomListIndex);
                 eAction lastAction = ApplyMove(machineCurrMove);
                 r_CurrentlyLegalMoves.Clear();
                 m_LastMovingPiece.AddLegalMovesToList(r_CurrentlyLegalMoves, m_CheckersBoard, v_OnlyCaptureMoves);
-                if (lastAction == eAction.Capture && r_CurrentlyLegalMoves.Count > 0)
+                if (lastAction == eAction.Capture && r_CurrentlyLegalMoves.Any())
                 {
                     m_FirstMoveThisTurn = false;
                     makeMachineMove();
@@ -603,11 +423,6 @@ namespace CheckersGame
                     m_FirstMoveThisTurn = true;
                     m_CurrPlayerTurn = enemyPlayer(m_CurrPlayerTurn);
                 }
-            }
-            else
-            {
-                // The machine player has no legal moves - game over
-                handleGameOver();
             }
         }
 
@@ -627,7 +442,6 @@ namespace CheckersGame
             }
 
             // updating movement
-            OnPieceMoved(i_Move.Value); // Notify form that a piece had moved and send the movement that was done
             m_LastMovingPiece.MovePiece(i_Move.Value.Destination, m_CheckersBoard);
          
             return nextAction;
@@ -644,12 +458,11 @@ namespace CheckersGame
         }
 
         // Removes the piece from the current game
-        private void removePieceFromPosition(PlayerInfo m_CurrPlayerTurn, Position i_PiecePosition)
+        private void removePieceFromPosition(PlayerInfo i_CurrPlayerTurn, Position i_PiecePosition)
         {
-            List<Piece> playerPieceList = getPlayerPiecesList(m_CurrPlayerTurn);
-            Piece pieceToRemove = getPieceByPosition(m_CurrPlayerTurn, i_PiecePosition);
+            List<Piece> playerPieceList = getPlayerPiecesList(i_CurrPlayerTurn);
+            Piece pieceToRemove = getPieceByPosition(i_CurrPlayerTurn, i_PiecePosition);
             pieceToRemove.RemovePiece(m_CheckersBoard);
-            OnPieceCaptured(pieceToRemove.CurrPosition);    // Notify the form to remove the piece form the form board
             playerPieceList.Remove(pieceToRemove);
         }
 
@@ -699,47 +512,19 @@ namespace CheckersGame
             return i_Player == m_Player1 ? m_Player1PiecesList : m_Player2PiecesList;
         }
 
-        protected void OnPieceCaptured(Position i_CepturedPiecePosition)
+        protected void OnInvalidMoveGiven(EventArgs e)
         {
-            if (NotifyPieceCaptured != null)
+            if (InvalidMoveGiven != null)
             {
-                NotifyPieceCaptured.Invoke(i_CepturedPiecePosition);
+                InvalidMoveGiven.Invoke(this, e);
             }
         }
 
-        protected void OnPieceMoved(Move i_MovementDone)
+        protected void OnGameOverOccured(GameOverEventArgs e)
         {
-            if (NotifyPieceMoved != null)
+            if (GameOver != null)
             {
-                NotifyPieceMoved.Invoke(i_MovementDone);
-            }
-        }
-
-        protected void OnInvalidMoveGiven()
-        {
-            if (NotifyInvalidMoveGiven != null)
-            {
-                NotifyInvalidMoveGiven.Invoke();
-            }
-        }
-
-        protected void OnGameOverOccured(
-        PlayerInfo i_WinnerInfo,
-        bool i_Tie,
-        uint i_Player1NewScore,
-        uint i_Player2NewScore)
-        {
-            if (NotifyGameOver != null)
-            {
-                NotifyGameOver.Invoke(i_WinnerInfo, i_Tie, i_Player1NewScore, i_Player2NewScore);
-            }
-        }
-
-        protected void OnNotifyManToKingOccured(Piece i_ChangedPiece)
-        {
-            if (NotifyManToKingOccured != null)
-            {
-                NotifyManToKingOccured.Invoke(i_ChangedPiece);
+                GameOver.Invoke(this, e);
             }
         }
     }

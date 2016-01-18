@@ -12,8 +12,8 @@
         private const char k_SeperatingCharSign = '=';
         private const char k_QuitChar = 'Q';
 
-        private readonly char[] r_PiecesSymbols = { ' ', 'O', 'X', 'U', 'K' };   
-         
+        private readonly char[] r_PiecesSymbols = { ' ', 'O', 'X', 'U', 'K' };
+
         internal bool IsSecondPlayerHuman()
         {
             return askUserBooleanQuestion("Is this a two-players game? ");
@@ -59,18 +59,18 @@
 
             if (splittedMove.Length == 2 && checkMoveRequest(splittedMove[0], splittedMove[1]))
             {
-                   returnedPosition = new Move(Position.ParseAlphabetPosition(splittedMove[0]), Position.ParseAlphabetPosition(splittedMove[1]));           
+                returnedPosition = new Move(Position.ParseAlphabetPosition(splittedMove[0]), Position.ParseAlphabetPosition(splittedMove[1]));
             }
-     
+
             return returnedPosition;
         }
-        
+
         // Check of the move syntax is valid
         private bool checkMoveRequest(string i_SourcePosition, string i_DestinationPosition)
         {
             return i_DestinationPosition.Length == 2
                 && i_SourcePosition.Length == 2
-                && char.IsUpper(i_SourcePosition[0]) 
+                && char.IsUpper(i_SourcePosition[0])
                 && char.IsUpper(i_DestinationPosition[0])
                 && char.IsLower(i_SourcePosition[1])
                 && char.IsLower(i_DestinationPosition[1]);
@@ -78,7 +78,7 @@
 
         internal void PrintBoard(CheckersGameBoard i_CheckersBoard)
         {
-            byte checkersBoardSize = (byte)i_CheckersBoard.BoardSize;            
+            byte checkersBoardSize = (byte)i_CheckersBoard.BoardSize;
 
             Ex02.ConsoleUtils.Screen.Clear();
 
@@ -93,9 +93,9 @@
                 currentLowerAlphabet++;
 
                 // printing current cell
-                for (int j = 0;  j < checkersBoardSize; j++)
+                for (int j = 0; j < checkersBoardSize; j++)
                 {
-                    printCell(i_CheckersBoard.BoardMatrix[i, j]);
+                    printCell(i_CheckersBoard[i, j]);
                 }
 
                 Console.Write(Environment.NewLine);
@@ -130,7 +130,7 @@
             char currentUpperAlphabet = 'A';
             for (int i = 0; i < i_CheckersBoardSize; i++)
             {
-                Console.Write("   {0}", currentUpperAlphabet++);               
+                Console.Write("   {0}", currentUpperAlphabet++);
             }
 
             Console.Write(Environment.NewLine);
@@ -170,10 +170,10 @@ Second Player : {2} scored {3} points!",
         }
 
         internal int GetBoardSize()
-        {       
+        {
             int inputSize = getPosNumFromUser("Please Enter the board size (6,8,10)");
-            int? boardSize = null;   
-       
+            int? boardSize = null;
+
             // repeat until board size is legal
             while (boardSize == null)
             {
@@ -205,7 +205,7 @@ Second Player : {2} scored {3} points!",
                 char.ToLower(convertToUpperLetter(i_MoveToConvert.Source.Row)),
                 convertToUpperLetter(i_MoveToConvert.Destination.Col),
                 char.ToLower(convertToUpperLetter(i_MoveToConvert.Destination.Row)));
-                
+
             return moveUiString;
         }
 
@@ -238,10 +238,10 @@ Second Player : {2} scored {3} points!",
                         break;
                     case k_NoStr:
                         resultValue = false;
-                        break;   
+                        break;
                     default:
                         ShowBadInputMessage();
-                        break;                        
+                        break;
                 }
             }
 
@@ -259,7 +259,7 @@ Second Player : {2} scored {3} points!",
                 ShowBadInputMessage();
                 strnextAction = Console.ReadLine();
             }
-        
+
             return strnextAction;
         }
 
@@ -267,12 +267,12 @@ Second Player : {2} scored {3} points!",
         {
             int intParseRes;
 
-            string strnextAction = GetInputString(i_MessageToUser, k_MaxNumOfDigitsInInput); 
+            string strnextAction = GetInputString(i_MessageToUser, k_MaxNumOfDigitsInInput);
             bool strIsPosNumber = int.TryParse(strnextAction, out intParseRes) && intParseRes > 0;     // Checking if a positive valid number entered
             while (!strIsPosNumber)
             {
                 ShowBadInputMessage();
-                strnextAction = GetInputString(i_MessageToUser, k_MaxNumOfDigitsInInput); 
+                strnextAction = GetInputString(i_MessageToUser, k_MaxNumOfDigitsInInput);
                 strIsPosNumber = int.TryParse(strnextAction, out intParseRes) && intParseRes > 0;     // Checking if a positive valid number entered
             }
 

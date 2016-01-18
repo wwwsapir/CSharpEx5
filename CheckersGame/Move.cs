@@ -2,8 +2,8 @@
 {
     public struct Move
     {
-        private Position m_Source; //Coordinates
-        private Position m_Destination; //Coordinates
+        private Position m_Source; // Coordinates
+        private Position m_Destination; // Coordinates
 
         public Position Source
         {
